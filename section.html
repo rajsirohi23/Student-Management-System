@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sections - Student Result Management System</title>
+  <link rel="stylesheet" href="Css/style.css" />
+  <link rel="stylesheet" href="Css/style_section.css">
+</head>
+<body>
+
+  <div class="main-card">
+
+    <div class="card-header">
+      <h1>Student Result Management System</h1>
+      <p>Manage students, sections, and academic results</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab"><a href="index.html">Students</a></button>
+      <button class="tab active">Sections</button>
+      <button class="tab"><a href="result.html">Results</a></button>
+    </div>
+
+    <div class="content">
+
+      <div class="section-header">
+        <h2>Section Management</h2>
+        <button id="openAdd" class="btn-add">Add New Section</button>
+      </div>
+
+      <table class="sections-table" id="sectionsTable">
+        <thead>
+          <tr>
+            <th>NAME</th>
+            <th>DESCRIPTION</th>
+            <th>TOTAL STUDENTS</th>
+            <th>ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr>
+            <td>Section A</td>
+            <td>Morning batch students</td>
+            <td class="count">0</td>
+            <td class="actions">
+              <button class="btn btn-edit" data-action="edit">Edit</button>
+              <button class="btn btn-delete" data-action="delete">Delete</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Section B</td>
+            <td>Afternoon batch students</td>
+            <td class="count">0</td>
+            <td class="actions">
+              <button class="btn btn-edit" data-action="edit">Edit</button>
+              <button class="btn btn-delete" data-action="delete">Delete</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Section C</td>
+            <td>Evening batch students</td>
+            <td class="count">0</td>
+            <td class="actions">
+              <button class="btn btn-edit" data-action="edit">Edit</button>
+              <button class="btn btn-delete" data-action="delete">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+    </div>
+  </div>
+
+  <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true">
+    <div class="modal" id="sectionModal">
+      <h3 id="modalTitle">Add New Section</h3>
+      <div class="form-row">
+        <label style="display:none">Name</label>
+        <input id="secName" type="text" placeholder="Name *" />
+      </div>
+      <div class="form-row">
+        <textarea id="secDesc" rows="4" placeholder="Description"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelBtn" class="btn-secondary">Cancel</button>
+        <button id="saveBtn" class="btn-add">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const openAdd = document.getElementById('openAdd');
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const modalTitle = document.getElementById('modalTitle');
+    const secName = document.getElementById('secName');
+    const secDesc = document.getElementById('secDesc');
+    const saveBtn = document.getElementById('saveBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const tableBody = document.getElementById('tableBody');
+
+    let editRow = null;
+
+    function openModal(mode='add', row=null) {
+      modalBackdrop.style.display = 'flex';
+      if (mode === 'add') {
+        modalTitle.textContent = 'Add New Section';
+        saveBtn.textContent = 'Create';
+        secName.value = '';
+        secDesc.value = '';
+        editRow = null;
+      } else {
+        modalTitle.textContent = 'Edit Section';
+        saveBtn.textContent = 'Save';
+        editRow = row;
+        secName.value = row.children[0].textContent.trim();
+        secDesc.value = row.children[1].textContent.trim();
+      }
+    }
+
+    function closeModal() {
+      modalBackdrop.style.display = 'none';
+    }
+
+    openAdd.addEventListener('click', () => openModal('add'));
+
+    cancelBtn.addEventListener('click', closeModal);
+    modalBackdrop.addEventListener('click', (e) => {
+      if (e.target === modalBackdrop) closeModal();
+    });
+
+    saveBtn.addEventListener('click', () => {
+      const name = secName.value.trim();
+      const desc = secDesc.value.trim();
+      if (!name) {
+        secName.focus();
+        return;
+      }
+      if (editRow) {
+        editRow.children[0].textContent = name;
+        editRow.children[1].textContent = desc;
+      } else {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${escapeHtml(name)}</td>
+                        <td>${escapeHtml(desc)}</td>
+                        <td class="count">0</td>
+                        <td class="actions">
+                          <button class="btn btn-edit" data-action="edit">Edit</button>
+                          <button class="btn btn-delete" data-action="delete">Delete</button>
+                        </td>`;
+        tableBody.appendChild(tr);
+      }
+      closeModal();
+    });
+
+    tableBody.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const action = btn.getAttribute('data-action');
+      const row = btn.closest('tr');
+      if (action === 'edit') {
+        openModal('edit', row);
+      } else if (action === 'delete') {
+        const name = row.children[0].textContent.trim();
+        const ok = confirm(`Delete "${name}"? This cannot be undone.`);
+        if (ok) row.remove();
+      }
+    });
+
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, function(m) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]; });
+    }
+  </script>
+
+</body>
+</html>

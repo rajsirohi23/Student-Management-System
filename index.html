@@ -22,34 +22,263 @@
       <button class="tab">Results</button>
     </div>
 
-    <div class="content">
-      <div class="section-header">
-        <h2>Student Management</h2>
-        <button class="btn-primary">Add New Student</button>
-      </div>
+    <div class="content" id="studentContent">
+            <div class="section-header">
+                <h2>Student Management</h2>
+                <button class="btn-primary" id="openAddStudentModal">Add New Student</button>
+            </div>
 
-      <table class="table">
-        <thead>
-          <tr>
-            <th>NAME</th>
-            <th>EMAIL</th>
-            <th>SECTION</th>
-            <th>ENROLLMENT DATE</th>
-            <th>ACTIONS</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td colspan="5" class="empty">
-              No students found. Add a new student to get started.
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-    </div>
-
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>NAME</th>
+                            <th>EMAIL</th>
+                            <th>SECTION</th>
+                            <th>ENROLLMENT DATE</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        <tr>
+                            <td colspan="5" class="empty">
+                                Loading students...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
   </div>
+    <div id="studentFormModal" class="modal-backdrop">
+        <div class="modal-content">
+            <h3 id="modalTitle">Add New Student</h3>
+            <form id="studentForm">
+                <input type="hidden" id="studentId">
+                
+                <label for="studentName">Name:</label>
+                <input type="text" id="studentName" required autocomplete="off">
 
+                <label for="studentEmail">Email:</label>
+                <input type="email" id="studentEmail" required autocomplete="off">
+                
+                <label for="studentSection">Section:</label>
+                <select id="studentSection" required>
+                </select>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" id="closeFormModalBtn">Cancel</button>
+                    <button type="submit" class="btn-primary" id="saveStudentBtn">Save Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="deleteConfirmModal" class="modal-backdrop">
+        <div class="modal-content">
+            <h3>Confirm Deletion</h3>
+            <p>Are you sure you want to delete this student? This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" id="cancelDeleteBtn">Cancel</button>
+                <button type="button" class="btn-delete" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+  <script>
+        const STORAGE_KEY = 'studentResultSystemData'; 
+        
+        let appData = {
+            students: [],
+            sections: ['A', 'B', 'C', 'D'], 
+            results: []
+        };
+
+        function loadData() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                if (data) {
+                    const parsedData = JSON.parse(data);
+                    appData = { ...appData, ...parsedData };
+                }
+            } catch (error) {
+                console.error("Error loading data from localStorage:", error);
+            }
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+            } catch (error) {
+                console.error("Error saving data to localStorage:", error);
+            }
+        }
+      
+        const studentTableBody = document.getElementById('studentTableBody');
+        const studentFormModal = document.getElementById('studentFormModal');
+        const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+        const studentForm = document.getElementById('studentForm');
+        const studentIdInput = document.getElementById('studentId');
+        const studentNameInput = document.getElementById('studentName');
+        const studentEmailInput = document.getElementById('studentEmail');
+        const sectionSelect = document.getElementById('studentSection');
+        const modalTitle = document.getElementById('modalTitle');
+        
+        let studentIdToDelete = null;
+
+        function openModal(modal) {
+            modal.classList.add('open');
+        }
+
+        function closeModal(modal) {
+            modal.classList.remove('open');
+        }
+
+        function populateSections() {
+            sectionSelect.innerHTML = appData.sections.map(section => 
+                `<option value="${section}">${section}</option>`
+            ).join('');
+        }
+
+        document.getElementById('openAddStudentModal').addEventListener('click', () => {
+            studentIdInput.value = '';
+            studentForm.reset();
+            modalTitle.textContent = 'Add New Student';
+            document.getElementById('saveStudentBtn').textContent = 'Save Student';
+            populateSections();
+            openModal(studentFormModal);
+        });
+
+        document.getElementById('closeFormModalBtn').addEventListener('click', () => {
+            closeModal(studentFormModal);
+        });
+        
+        document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
+            studentIdToDelete = null;
+            closeModal(deleteConfirmModal);
+        });
+        
+        document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+            if (studentIdToDelete) {
+                performDeleteStudent(studentIdToDelete);
+                studentIdToDelete = null;
+            }
+            closeModal(deleteConfirmModal);
+        });
+
+        studentForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const isEditing = studentIdInput.value !== '';
+            
+            const studentData = {
+                name: studentNameInput.value.trim(),
+                email: studentEmailInput.value.trim(),
+                section: sectionSelect.value,
+            };
+
+            if (isEditing) {
+                const index = appData.students.findIndex(s => s.id === studentIdInput.value);
+                if (index !== -1) {
+                    appData.students[index] = { 
+                        ...appData.students[index],
+                        ...studentData 
+                    };
+                }
+            } else {
+                const newStudent = {
+                    id: Date.now().toString(), 
+                    ...studentData,
+                    enrollmentDate: new Date().toLocaleDateString('en-US'),
+                };
+                appData.students.push(newStudent);
+            }
+
+            saveData();
+            renderStudents();
+            closeModal(studentFormModal);
+            studentForm.reset();
+        });
+        window.editStudent = function(studentId) {
+            const student = appData.students.find(s => s.id === studentId);
+            if (student) {
+                studentIdInput.value = student.id;
+                studentNameInput.value = student.name;
+                studentEmailInput.value = student.email;
+                
+                populateSections();
+                sectionSelect.value = student.section;
+                
+                modalTitle.textContent = 'Edit Student Details';
+                document.getElementById('saveStudentBtn').textContent = 'Update Student';
+                openModal(studentFormModal);
+            }
+        }
+        window.deleteStudent = function(studentId) {
+            studentIdToDelete = studentId;
+            openModal(deleteConfirmModal);
+        }
+        function performDeleteStudent(studentId) {
+            appData.students = appData.students.filter(s => s.id !== studentId);
+            saveData();
+            renderStudents();
+        }
+
+        function renderStudents() {
+            studentTableBody.innerHTML = '';
+
+            if (appData.students.length === 0) {
+                studentTableBody.innerHTML = `
+                    <tr>
+                      <td colspan="5" class="empty">
+                        No students found. Add a new student to get started.
+                      </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            appData.students.forEach(student => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${student.name}</td>
+                    <td>${student.email}</td>
+                    <td>${student.section}</td>
+                    <td>${student.enrollmentDate}</td>
+                    <td>
+                        <button class="btn-primary btn-edit" onclick="editStudent('${student.id}')">Edit</button>
+                        <button class="btn-primary btn-delete" onclick="deleteStudent('${student.id}')">Delete</button>
+                    </td>
+                `;
+                studentTableBody.appendChild(row);
+            });
+        }
+
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                const targetTab = e.target.getAttribute('data-tab');
+
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+
+                document.getElementById('studentContent').style.display = 'none';
+                document.getElementById('sectionContent').style.display = 'none';
+                document.getElementById('resultsContent').style.display = 'none';
+
+                if (targetTab === 'students') {
+                    document.getElementById('studentContent').style.display = 'block';
+                    e.target.classList.add('active');
+                } else if (targetTab === 'sections') {
+                    document.getElementById('sectionContent').style.display = 'block';
+                    e.target.classList.add('active');
+                } else if (targetTab === 'results') {
+                    document.getElementById('resultsContent').style.display = 'block';
+                    e.target.classList.add('active');
+                }
+            });
+        });
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            renderStudents();
+            populateSections(); 
+        });
+    </script>
 </body>
 </html>
